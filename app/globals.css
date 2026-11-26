@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+/* shadcn-style design tokens. Primary is Nigerian green. */
+@theme {
+  --color-background: #ffffff;
+  --color-foreground: #0f172a;
+  --color-card: #ffffff;
+  --color-muted: #f1f5f9;
+  --color-muted-foreground: #64748b;
+  --color-border: #e2e8f0;
+  --color-primary: #008751;
+  --color-primary-foreground: #ffffff;
+  --color-destructive: #dc2626;
+  --color-ring: #008751;
+}
+
+body {
+  background: #f8fafc;
+  color: var(--color-foreground);
+}
