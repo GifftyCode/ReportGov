@@ -17,7 +17,7 @@ export function Header() {
   const links = [
     { href: "/report", label: "Report an issue", show: true },
     { href: "/complaints", label: "My complaints", show: true },
-    { href: "/officer", label: "MDA inbox", show: me?.role === "officer" || me?.role === "admin" },
+    { href: "/officer", label: "MDA inbox", show: me?.role === "officer" },
     { href: "/admin", label: "PEBEC dashboard", show: me?.role === "admin" },
   ];
 
@@ -25,7 +25,8 @@ export function Header() {
     <header className="border-b border-border bg-white">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-4 px-4 py-3">
         <Link href="/" className="font-bold text-primary">
-          ReportGov <span className="font-normal text-muted-foreground">Lite</span>
+          ReportGov{" "}
+          <span className="font-normal text-muted-foreground">Lite</span>
         </Link>
         <Show when="signed-in">
           <nav className="flex flex-wrap gap-1">

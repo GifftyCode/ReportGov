@@ -27,7 +27,17 @@ Log in, create a new project, and leave it running. It creates `.env.local` with
 
 1. In the Clerk dashboard, create an application (enable Email; Google is optional).
 2. Go to **Configure → Integrations → Convex** (or open dashboard.clerk.com/apps/setup/convex) and click **Activate Convex integration**. Copy the **Frontend API URL** it shows, e.g. `https://xxx-yy-12.clerk.accounts.dev`.
-3. Go to **API keys** and add both keys to `.env.local`:
+3. Go to **Sessions → Customize session token** and set the claims to the following (keep `aud`), then save. Without this, Convex can't see users' emails, and `setRole` can't find them.
+
+```json
+{
+  "aud": "convex",
+  "email": "{{user.primary_email_address}}",
+  "name": "{{user.full_name}}"
+}
+```
+
+4. Go to **API keys** and add both keys to `.env.local`:
 
 ```
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
@@ -56,11 +66,11 @@ Open http://localhost:3000.
 
 Sign in three times, in three separate browser windows (for example Chrome, a Chrome incognito window, and Edge):
 
-| Account | Example email | Role |
-| --- | --- | --- |
-| Business | `yourname+business@gmail.com` | citizen (default) |
-| NPA officer | `yourname+npa@gmail.com` | officer for NPA |
-| PEBEC admin | `yourname+admin@gmail.com` | admin |
+| Account     | Example email                 | Role              |
+| ----------- | ----------------------------- | ----------------- |
+| Business    | `yourname+business@gmail.com` | citizen (default) |
+| NPA officer | `yourname+npa@gmail.com`      | officer for NPA   |
+| PEBEC admin | `yourname+admin@gmail.com`    | admin             |
 
 Tip: in a Clerk development instance, any email containing `+clerk_test` (e.g. `yourname+clerk_test_npa@gmail.com`) accepts the verification code **424242**, so no inbox is needed.
 
@@ -121,26 +131,26 @@ There are five backend tests (Convex functions run in memory with `convex-test`)
 Before the interview: deploy, set `SLA_MINUTES=3`, and have the three windows signed in and arranged side by side. Make sure there's at least one resolved complaint and one escalated complaint, so the leaderboard has data.
 
 1. **Business window → Report an issue.** Choose NPA, type a title and description, and submit. You land on the tracking page with a reference (RG-XXXXXX) and a live countdown.
-2. **Officer window → MDA inbox.** The complaint has **already appeared, with no refresh**. *"That's Convex reactivity: every query updates live when the data changes."*
-3. Officer clicks **Start**, then types a note and clicks **Resolve**. *Point at the business window:* the status, response note and timeline update instantly.
+2. **Officer window → MDA inbox.** The complaint has **already appeared, with no refresh**. _"That's Convex reactivity: every query updates live when the data changes."_
+3. Officer clicks **Start**, then types a note and clicks **Resolve**. _Point at the business window:_ the status, response note and timeline update instantly.
 4. **Admin window → PEBEC dashboard.** NPA's score updates live.
-5. File a second complaint and leave it. *"Each complaint schedules its own escalation job when it's created. I set the SLA to 3 minutes for this demo; in production it's 72 hours."* A few minutes later, it turns **Escalated** and appears in PEBEC's list, with "System" in its timeline.
-6. *Security point:* sign the business account into `/officer` → **Not authorised**. *"And that's not just hidden in the UI: the Convex function itself checks the role, so the API refuses too. I have a test for it."*
+5. File a second complaint and leave it. _"Each complaint schedules its own escalation job when it's created. I set the SLA to 3 minutes for this demo; in production it's 72 hours."_ A few minutes later, it turns **Escalated** and appears in PEBEC's list, with "System" in its timeline.
+6. _Security point:_ sign the business account into `/officer` → **Not authorised**. _"And that's not just hidden in the UI: the Convex function itself checks the role, so the API refuses too. I have a test for it."_
 
 ## 6. How it works (talking points)
 
-| Requirement | Where it lives | What to say |
-| --- | --- | --- |
-| App Router | `app/` | Server components by default (the landing page and the `[reference]` page wrapper, which awaits `params` as a Promise). Interactive pages are client components. |
-| Route protection | `proxy.ts` | Next.js 16 renamed `middleware.ts` to `proxy.ts`. `clerkMiddleware` and `auth.protect()` send signed-out users to sign-in. |
-| Auth → backend | `components/ConvexClientProvider.tsx`, `convex/auth.config.ts` | `ConvexProviderWithClerk` passes Clerk's JWT to Convex, and Convex verifies it against the Clerk issuer domain. |
-| RBAC | `convex/lib/auth.ts`, `convex/users.ts` | Roles are stored in Convex, not in the browser. `requireRole()` runs inside every protected function. `setRole` is an `internalMutation`, so the browser can't call it at all. |
-| Data model | `convex/schema.ts` | Tables `users`, `mdas`, `complaints` and `events` (audit trail), with indexes for every lookup (`by_mda`, `by_reporter`, `by_reference`). |
-| SLA timer | `convex/complaints.ts` → `create` | `ctx.scheduler.runAfter(sla, internal.complaints.escalateIfUnresolved)`. Convex stores the job, so it survives restarts. |
-| Real-time | `useQuery` in every page | No polling and no websocket code; queries re-run when data changes. |
-| Validation | `create` mutation, plus form `minLength` | Convex `v` validators check types; the server enforces lengths, because the client can be bypassed. |
-| Privacy | `complaints.get` | Returns `null` (not "forbidden") for complaints you can't see, so it doesn't even reveal that they exist. |
-| UI | `components/ui/` | shadcn-style Button, Card, Badge and inputs (`cva`, `cn()`, Radix `Slot` for `asChild`), Tailwind v4 tokens with Nigerian green as the primary colour. |
+| Requirement      | Where it lives                                                 | What to say                                                                                                                                                                    |
+| ---------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| App Router       | `app/`                                                         | Server components by default (the landing page and the `[reference]` page wrapper, which awaits `params` as a Promise). Interactive pages are client components.               |
+| Route protection | `proxy.ts`                                                     | Next.js 16 renamed `middleware.ts` to `proxy.ts`. `clerkMiddleware` and `auth.protect()` send signed-out users to sign-in.                                                     |
+| Auth → backend   | `components/ConvexClientProvider.tsx`, `convex/auth.config.ts` | `ConvexProviderWithClerk` passes Clerk's JWT to Convex, and Convex verifies it against the Clerk issuer domain.                                                                |
+| RBAC             | `convex/lib/auth.ts`, `convex/users.ts`                        | Roles are stored in Convex, not in the browser. `requireRole()` runs inside every protected function. `setRole` is an `internalMutation`, so the browser can't call it at all. |
+| Data model       | `convex/schema.ts`                                             | Tables `users`, `mdas`, `complaints` and `events` (audit trail), with indexes for every lookup (`by_mda`, `by_reporter`, `by_reference`).                                      |
+| SLA timer        | `convex/complaints.ts` → `create`                              | `ctx.scheduler.runAfter(sla, internal.complaints.escalateIfUnresolved)`. Convex stores the job, so it survives restarts.                                                       |
+| Real-time        | `useQuery` in every page                                       | No polling and no websocket code; queries re-run when data changes.                                                                                                            |
+| Validation       | `create` mutation, plus form `minLength`                       | Convex `v` validators check types; the server enforces lengths, because the client can be bypassed.                                                                            |
+| Privacy          | `complaints.get`                                               | Returns `null` (not "forbidden") for complaints you can't see, so it doesn't even reveal that they exist.                                                                      |
+| UI               | `components/ui/`                                               | shadcn-style Button, Card, Badge and inputs (`cva`, `cn()`, Radix `Slot` for `asChild`), Tailwind v4 tokens with Nigerian green as the primary colour.                         |
 
 **If asked "what would you add next?"**
 
